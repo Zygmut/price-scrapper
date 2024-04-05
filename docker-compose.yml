@@ -1,0 +1,27 @@
+version: "3.9"
+
+networks:
+  default:
+    driver: bridge
+
+services:
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3000:3000"
+    networks:
+      - app-network
+
+  influxdb:
+    image: influxdb:latest
+    container_name: influxdb
+    networks:
+      - default
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    ports:
+      - "8086:8086"
+    volumes:
+      - ./influxdb/config:/etc/influxdb2
+      - ./influxdb/db:/var/lib/influxdb2
