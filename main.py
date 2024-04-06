@@ -1,11 +1,13 @@
 from requests import get  # type: ignore
 from bs4 import BeautifulSoup  # type: ignore
 from bs4.element import Tag  # type: ignore
-from prometheus_client import CollectorRegistry, Gauge, push_to_gateway
+from influxdb_client import InfluxDBClient, Point
+from influxdb_client.client.write_api import SYNCHRONOUS
 from dotenv import load_dotenv
 from datetime import datetime, timezone, timedelta
 
 import pandas as pd  # type: ignore
+import os
 import os.path
 import click
 
@@ -72,25 +74,24 @@ def main(date: str) -> None:
 
     df.to_csv(os.path.join(".", "out", f"{date}.csv"))
 
-    # export it to Prometheus
-    registry = CollectorRegistry()
-    euro_per_kWh_gauge = Gauge(
-        "energy_price_euro_per_kWh",
-        "Energy Price in Euro per kWh",
-        ["timestamp"],
-        registry=registry,
+    write_client = InfluxDBClient(
+        url=os.getenv("INFLUX_HOST"),
+        token=os.getenv("INFLUX_TOKEN"),
+        org=os.getenv("INFLUX_ORG"),
     )
 
-    for time, price in df.iterrows():
-        timestamp = int(datetime.strptime(time, "%Y-%m-%d %H:%M:%S").timestamp())
-        euro_per_kWh_gauge.labels(timestamp=timestamp).set(float(price.iloc[0]))
+    write_api = write_client.write_api(write_options=SYNCHRONOUS)
 
-    # Push metrics to Prometheus
-    push_to_gateway(
-        "http://host.docker.internal:9091",
-        job="energy_price_scraper",
-        registry=registry,
+    points = [
+        Point("euro_per_kWh").field("price", float(float(price.iloc[0]))).time(time)
+        for time, price in df.iterrows()
+    ]
+
+    write_api.write(
+        bucket="electricity_price", org=os.getenv("INFLUX_ORG"), record=points
     )
+
+    # Push metrics to InfluxDB
 
 
 if __name__ == "__main__":

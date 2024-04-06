@@ -3,4 +3,4 @@ beautifulsoup4
 click
 pandas
 python-dotenv
-prometheus-client
+influxdb-client
