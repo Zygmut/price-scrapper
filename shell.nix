@@ -4,18 +4,21 @@
 pkgs.mkShellNoCC {
   packages = with pkgs; [
     docker-compose
+    jq
     (python3.withPackages (ps: with ps; [
       requests
       beautifulsoup4
       click
       pandas
-      python-dotenv
       influxdb-client
     ]))
   ];
 
-  # *** Environment Variables ***
-  INFLUX_TOKEN="i-like-bananas-as-much-as-radiation";
-  INFLUX_HOST="http://localhost:8086";
-  INFLUX_ORG="cool_org";
+  shellHook = ''
+    docker-compose up -d
+
+    sleep 0.5
+
+    export INFLUX_TOKEN=$(docker exec -t "influxdb" influx auth list --user admin --json | jq -r ".[0].token")
+  '';
 }
