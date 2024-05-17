@@ -3,8 +3,9 @@ from bs4 import BeautifulSoup  # type: ignore
 from bs4.element import Tag  # type: ignore
 from influxdb_client import InfluxDBClient, Point  # type: ignore
 from influxdb_client.client.write_api import SYNCHRONOUS  # type: ignore
-from dotenv import load_dotenv
 from datetime import datetime, timezone, timedelta
+from json import JSONEncoder, dumps, loads
+from functools import reduce
 
 import pandas as pd  # type: ignore
 import os
@@ -20,24 +21,43 @@ def to_utc(timestamp_str):
     return utc_time.strftime("%Y-%m-%d %H:%M:%S")
 
 
-def read_contents(date: str) -> str:
-    FILE_PATH = os.path.join(".", "cache", f"{date}.html")
+def cache_to_file(filename):
+    class DateTimeEncoder(JSONEncoder):
+        def default(self, o):
+            if isinstance(o, datetime):
+                return o.isoformat()
+            return super().default(o)
 
-    if os.path.exists(FILE_PATH):
-        print(f"Reading {date}.html from the cache")
-        with open(FILE_PATH, "r") as file:
-            content = file.read()
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            for os.path.sep in filename:
+                os.makedirs(os.path.dirname(filename), exist_ok=True)
 
-        return content
+            parsed_filename = reduce(
+                lambda acc, args: acc.replace(f"[{args[0]}]", str(args[1])),
+                kwargs.items(),
+                filename,
+            )
 
-    page_content: str = get(
-        f"https://infoenergia.es/luz/precio-luz-hoy?dia={date}"
-    ).text
+            if os.path.exists(parsed_filename):
+                with open(parsed_filename, "r") as file:
+                    cache_data = file.read()
+                    return loads(cache_data)
 
-    with open(FILE_PATH, "w") as file:
-        file.write(page_content)
+            data = func(*args, **kwargs)
 
-    return page_content
+            with open(parsed_filename, "w") as file:
+                file.write(dumps(data, cls=DateTimeEncoder))
+                return data
+
+        return wrapper
+
+    return decorator
+
+
+@cache_to_file("./cache/[date].html")
+def read_contents(*, date: str) -> str:
+    return get(f"https://infoenergia.es/luz/precio-luz-hoy?dia={date}").text
 
 
 def parse_cell(cell: Tag) -> dict[str, str | float]:
@@ -54,14 +74,28 @@ def parse_cell(cell: Tag) -> dict[str, str | float]:
 
 @click.command()
 @click.option(
+    "--token",
+    default=os.getenv("INFLUX_TOKEN"),
+    help="Influx token",
+)
+@click.option(
+    "--url",
+    default="http://localhost:8086",
+    help="Influx url",
+)
+@click.option(
+    "--org",
+    default="cool_org",
+    help="Influx organization name",
+)
+@click.option(
     "--date",
     default=datetime.today().strftime("%Y-%m-%d"),
-    help="The date to fetch the prices",
+    help="The date to fetch the prices fmt (YYYY-MM-DD)",
 )
-def main(date: str) -> None:
-    load_dotenv()
+def main(token: str, url: str, org: str, date: str) -> None:
 
-    soup = BeautifulSoup(read_contents(date), "html.parser")
+    soup = BeautifulSoup(read_contents(date=date), "html.parser")
 
     cells = soup.find_all("div", {"class": "th"})
 
@@ -74,14 +108,10 @@ def main(date: str) -> None:
 
     df.to_csv(os.path.join(".", "out", f"{date}.csv"))
 
-    assert os.getenv("INFLUX_HOST")
-    assert os.getenv("INFLUX_TOKEN")
-    assert os.getenv("INFLUX_ORG")
-
     write_client = InfluxDBClient(
-        url=os.getenv("INFLUX_HOST"),
-        token=os.getenv("INFLUX_TOKEN"),
-        org=os.getenv("INFLUX_ORG"),
+        token=token,
+        url=url,
+        org=org,
     )
 
     write_api = write_client.write_api(write_options=SYNCHRONOUS)
