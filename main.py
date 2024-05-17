@@ -1,8 +1,8 @@
 from requests import get  # type: ignore
 from bs4 import BeautifulSoup  # type: ignore
 from bs4.element import Tag  # type: ignore
-from influxdb_client import InfluxDBClient, Point
-from influxdb_client.client.write_api import SYNCHRONOUS
+from influxdb_client import InfluxDBClient, Point  # type: ignore
+from influxdb_client.client.write_api import SYNCHRONOUS  # type: ignore
 from dotenv import load_dotenv
 from datetime import datetime, timezone, timedelta
 
@@ -74,6 +74,10 @@ def main(date: str) -> None:
 
     df.to_csv(os.path.join(".", "out", f"{date}.csv"))
 
+    assert os.getenv("INFLUX_HOST")
+    assert os.getenv("INFLUX_TOKEN")
+    assert os.getenv("INFLUX_ORG")
+
     write_client = InfluxDBClient(
         url=os.getenv("INFLUX_HOST"),
         token=os.getenv("INFLUX_TOKEN"),
@@ -90,8 +94,6 @@ def main(date: str) -> None:
     write_api.write(
         bucket="electricity_price", org=os.getenv("INFLUX_ORG"), record=points
     )
-
-    # Push metrics to InfluxDB
 
 
 if __name__ == "__main__":
