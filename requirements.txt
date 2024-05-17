@@ -1,6 +1,0 @@
-requests
-beautifulsoup4
-click
-pandas
-python-dotenv
-influxdb-client
