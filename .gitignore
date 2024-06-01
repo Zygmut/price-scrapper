@@ -1,6 +1,7 @@
 .venv
 .mypy_cache
-cache/*.html
-out/*.csv
+cache/*
+out/*
 influxdb
 .env
+!**.gitkeep
