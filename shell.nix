@@ -6,6 +6,7 @@ pkgs.mkShellNoCC {
     docker-compose
     jq
     pre-commit
+    opentofu
     (python3.withPackages (ps: with ps; [
       requests
       beautifulsoup4
@@ -23,5 +24,7 @@ pkgs.mkShellNoCC {
     export INFLUX_TOKEN=$(docker exec -t "influxdb" influx auth list --user admin --json | jq -r ".[0].token")
 
     pre-commit install
+
+    tofu -chdir=terraform init
   '';
 }
