@@ -1,9 +1,3 @@
-version: "3.9"
-
-networks:
-  default:
-    driver: bridge
-
 services:
   grafana:
     image: grafana/grafana
@@ -31,3 +25,7 @@ services:
       - DOCKER_INFLUXDB_INIT_PASSWORD=adminadmin
       - DOCKER_INFLUXDB_INIT_ORG=cool_org
       - DOCKER_INFLUXDB_INIT_BUCKET=electricity_price
+
+networks:
+  default:
+    driver: bridge
