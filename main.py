@@ -30,14 +30,14 @@ def cache_to_file(filename):
 
     def decorator(func):
         def wrapper(*args, **kwargs):
-            for os.path.sep in filename:
-                os.makedirs(os.path.dirname(filename), exist_ok=True)
-
             parsed_filename = reduce(
                 lambda acc, args: acc.replace(f"[{args[0]}]", str(args[1])),
                 kwargs.items(),
                 filename,
             )
+
+            for os.path.sep in filename:
+                os.makedirs(os.path.dirname(parsed_filename), exist_ok=True)
 
             if os.path.exists(parsed_filename):
                 with open(parsed_filename, "r") as file:
@@ -55,9 +55,12 @@ def cache_to_file(filename):
     return decorator
 
 
-@cache_to_file("./cache/[date].html")
-def read_contents(*, date: str) -> str:
-    return get(f"https://infoenergia.es/luz/precio-luz-hoy?dia={date}").text
+@cache_to_file("./cache/[year]/[month]/[day].html")
+def read_contents(*, year: str, month: str, day: str) -> str:
+    print(year)
+    return get(
+        f"https://infoenergia.es/luz/precio-luz-hoy?dia={year}-{month}-{day}"
+    ).text
 
 
 def parse_cell(cell: Tag) -> dict[str, str | float]:
@@ -89,18 +92,31 @@ def parse_cell(cell: Tag) -> dict[str, str | float]:
     help="Influx organization name",
 )
 @click.option(
-    "--date",
-    default=datetime.today().strftime("%Y-%m-%d"),
-    help="The date to fetch the prices fmt (YYYY-MM-DD)",
+    "--year",
+    default=datetime.today().strftime("%Y"),
+    help="The year to fetch the prices",
 )
-def main(token: str, url: str, org: str, date: str) -> None:
+@click.option(
+    "--month",
+    default=datetime.today().strftime("%m"),
+    help="The month to fetch the prices fmt",
+)
+@click.option(
+    "--day",
+    default=datetime.today().strftime("%d"),
+    help="The day to fetch the prices fmt",
+)
+def main(token: str, url: str, org: str, year: str, month: str, day: str) -> None:
 
-    soup = BeautifulSoup(read_contents(date=date), "html.parser")
+    date = "-".join([year, month, day])
+
+    soup = BeautifulSoup(read_contents(year=year, month=month, day=day), "html.parser")
 
     cells = soup.find_all("div", {"class": "th"})
 
     parsed_data = map(parse_cell, cells)
 
+    # We'll save
     df = pd.DataFrame(parsed_data)
 
     df["timestamp"] = (date + " " + df["timestamp"]).apply(to_utc)
