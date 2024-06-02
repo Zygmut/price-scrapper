@@ -19,13 +19,12 @@ pkgs.mkShellNoCC {
   shellHook = ''
     docker-compose up -d
 
-    sleep 0.5
+    pre-commit install
+    tofu -chdir=terraform init
+
+    sleep 1
 
     export INFLUX_TOKEN=$(docker exec -t "influxdb" influx auth list --user admin --json | jq -r ".[0].token")
     export TF_VAR_influx_token=$(echo $INFLUX_TOKEN)
-
-    pre-commit install
-
-    tofu -chdir=terraform init
   '';
 }
