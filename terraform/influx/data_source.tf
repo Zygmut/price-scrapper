@@ -1,17 +1,18 @@
 resource "grafana_data_source" "this" {
-  type                = "influxdb"
-  name                = "InfluxDB-SQL"
-  url                 = "localhost:8086"
-  basic_auth_enabled  = true
-  basic_auth_username = "username"
+  type = "influxdb"
+  name = "InfluxDB-FLUX"
+  url  = "http://influxdb:8086"
+
+  is_default = true
 
   json_data_encoded = jsonencode({
-    httpMethod        = "POST"
-    prometheusType    = "Mimir"
-    prometheusVersion = "2.4.0"
+    authType     = "default"
+    organization = "cool_org"
+    version      = "Flux"
+    httpMode     = "POST"
   })
 
   secure_json_data_encoded = jsonencode({
-    basicAuthPassword = "password"
+    token = var.token
   })
 }

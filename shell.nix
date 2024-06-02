@@ -22,6 +22,7 @@ pkgs.mkShellNoCC {
     sleep 0.5
 
     export INFLUX_TOKEN=$(docker exec -t "influxdb" influx auth list --user admin --json | jq -r ".[0].token")
+    export TF_VAR_influx_token=$(echo $INFLUX_TOKEN)
 
     pre-commit install
 
