@@ -1,6 +1,6 @@
 provider "grafana" {
   url  = "http://localhost:3000"
-  auth = "remember to change this :)"
+  auth = "admin:admin"
 }
 
 module "InfluxDB" {
