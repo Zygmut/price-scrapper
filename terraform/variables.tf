@@ -4,6 +4,6 @@
 # Also, given that the token _might_ change and that I get it dynamically
 # I want to use it
 variable "influx_token" {
-  type = string
+  type      = string
   sensitive = true
 }
