@@ -57,7 +57,6 @@ def cache_to_file(filename):
 
 @cache_to_file("./cache/[year]/[month]/[day].html")
 def read_contents(*, year: str, month: str, day: str) -> str:
-    print(year)
     return get(
         f"https://infoenergia.es/luz/precio-luz-hoy?dia={year}-{month}-{day}"
     ).text
