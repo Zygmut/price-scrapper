@@ -4,19 +4,16 @@ from bs4.element import Tag  # type: ignore
 from influxdb_client import InfluxDBClient, Point  # type: ignore
 from influxdb_client.client.write_api import SYNCHRONOUS  # type: ignore
 from datetime import datetime, timezone, timedelta
-from json import JSONEncoder, dumps, loads
-from functools import reduce
-from loki_logger import get_logger
-from logging import Logger
 
-import sys
+from loki_logger import get_logger
+from decorator import cache_to_file
+
 import pandas as pd  # type: ignore
 import os
 import os.path
 import click
 
-# Get the logger
-logger = get_logger("price_scrapper")
+LOGGER = get_logger("price_scrapper")
 
 
 def to_utc(timestamp_str):
@@ -25,48 +22,6 @@ def to_utc(timestamp_str):
     local_time = local_time.replace(tzinfo=local_timezone)
     utc_time = local_time.astimezone(timezone.utc)
     return utc_time.strftime("%Y-%m-%d %H:%M:%S")
-
-
-def cache_to_file(filename):
-    class DateTimeEncoder(JSONEncoder):
-        def default(self, o):
-            if isinstance(o, datetime):
-                return o.isoformat()
-            return super().default(o)
-
-    def decorator(func):
-        def wrapper(*args, **kwargs):
-            parsed_filename = reduce(
-                lambda acc, args: acc.replace(f"[{args[0]}]", str(args[1])),
-                kwargs.items(),
-                filename,
-            )
-
-            for os.path.sep in filename:
-                os.makedirs(os.path.dirname(parsed_filename), exist_ok=True)
-
-            if os.path.exists(parsed_filename):
-                logger.info(
-                    f"Fetched {parsed_filename} from cache",
-                    extra={"tags": {"process": "cache"}},
-                )
-                with open(parsed_filename, "r") as file:
-                    cache_data = file.read()
-                    return loads(cache_data)
-
-            data = func(*args, **kwargs)
-
-            logger.info(
-                f"Cached {parsed_filename} from internet",
-                extra={"tags": {"process": "cache"}},
-            )
-            with open(parsed_filename, "w") as file:
-                file.write(dumps(data, cls=DateTimeEncoder))
-                return data
-
-        return wrapper
-
-    return decorator
 
 
 @cache_to_file("./cache/[year]/[month]/[day].html")
@@ -150,7 +105,7 @@ def main(token: str, url: str, org: str, year: str, month: str, day: str) -> Non
         for time, price in df.iterrows()
     ]
 
-    logger.info(f"Adding {len(points)} to influxDB")
+    LOGGER.info(f"Adding {len(points)} to influxDB")
     write_api.write(
         bucket="electricity_price", org=os.getenv("INFLUX_ORG"), record=points
     )
