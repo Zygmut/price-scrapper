@@ -84,7 +84,6 @@ def main(token: str, url: str, org: str, year: str, month: str, day: str) -> Non
 
     parsed_data = map(parse_cell, cells)
 
-    # We'll save
     df = pd.DataFrame(parsed_data)
 
     df["timestamp"] = (date + " " + df["timestamp"]).apply(to_utc)
