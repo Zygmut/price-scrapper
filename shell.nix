@@ -1,5 +1,6 @@
 # We pin to a specific nixpkgs commit for reproducibility.
-{ pkgs? import (fetchTarball "https://github.com/NixOS/nixpkgs/tarball/nixos-24.05") {} }:
+{ pkgs? import (fetchTarball "https://github.com/Moraxyc/nixpkgs/tarball/add-logging-loki") {} }:
+
 
 pkgs.mkShellNoCC {
   packages = with pkgs; [
@@ -13,6 +14,7 @@ pkgs.mkShellNoCC {
       click
       pandas
       influxdb-client
+      python-logging-loki
     ]))
   ];
 
